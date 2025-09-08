@@ -38,6 +38,12 @@ interface LawData {
 export default function Private() {
   const [data, setData] = useState<LawData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState("2025-01-01");
+
+  //날짜변경 핸들러
+  const handleDateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedDate(event.target.value);
+  };
 
   useEffect(() => {
     fetch("/law_data.json")
@@ -64,52 +70,45 @@ export default function Private() {
       {/* 그래프 카드 */}
       {/* props = "법안명" */}
       <div className="rounded-xl border border-gray-200 shadow-sm mt-10 w-full max-w-5xl">
-        <GraphCard title="개인정보보호법" data={lawData.news} />
+        <GraphCard title="개인정보보호법" data={lawData.news} color={['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e']} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10 w-full max-w-5xl">
+      <div className="flex flex-col md:flex-row gap-4 mt-10 w-full max-w-5xl max-h-[400px]">
         {/* 여론 카드 */}
         {/* props = "법안명" */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm w-full max-w-5xl">
+        <div className="w-full md:basis-2/5 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <div className='flex justify-between'>
             <h2 className="text-lg font-semibold mb-6 text-gray-800">여론</h2>
             <span className='text-sm mb-4 text-gray-800'>찬성 30% 반대 50% 중립 20%</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> */}
+          <div className="grid grid-cols-1 gap-6">
             {/* 왼쪽: 원형 그래프 */}
             <LawOpinionPie lawName="개인정보보호법" />
-
-            {/* 오른쪽: 워드 클라우드 */}
-            <KeywordCloud keywords={['개인정보', 'AI', '보호', '위험', '감시', '기업', '수집', '자율', '규제', '권리']} />
           </div>
         </div>
 
 
         {/* 피크뉴스 카드 */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4 text-gray-800">피크뉴스</h2>
-          <ul className="text-sm text-gray-600 space-y-2">
-            <li>
-              <strong>“개인정보보호법 개정 논란”</strong>
-              <p>정부의 데이터 정책에 시민단체 반발 이어져</p>
-            </li>
-            <li>
-              <strong>“AI 기업, 개인정보 수집 과잉 우려”</strong>
-              <p>IT 업계 자율 규제 필요성 대두</p>
-            </li>
-            <li>
-              <strong>“AI 기업, 개인정보 수집 과잉 우려”</strong>
-              <p>IT 업계 자율 규제 필요성 대두</p>
-            </li>
-            <li>
-              <strong>“개인정보보호법 개정 논란”</strong>
-              <p>정부의 데이터 정책에 시민단체 반발 이어져</p>
-            </li>
-            <li>
-              <strong>“AI 기업, 개인정보 수집 과잉 우려”</strong>
-              <p>IT 업계 자율 규제 필요성 대두</p>
-            </li>
-          </ul>
+        <div className="w-full md:basis-3/5 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className='flex w-full justify-between items-center'>
+            <h2 className="text-lg font-semibold mb-4 text-gray-800">핫이슈</h2>
+            <select value={selectedDate.replace(/-/g, '')} onChange={(e) => {
+              const val = e.target.value;
+              const formatted = val.slice(0, 4) + '-' + val.slice(4, 6) + '-' + val.slice(6, 8);
+              setSelectedDate(formatted);
+            }}>
+              <option value="20250101">20250101</option>
+              {/* 더 많은 옵션 추가 가능 */}
+            </select>
+
+          </div>
+          <div>
+            <KeywordCloud
+              keywords={["가이드라인", "마이데이터", "개정", "이동권", '해킹', '유출', '중단', '위약금', '과징금']}
+              selectedDate={selectedDate}
+            />
+          </div>
         </div>
       </div>
     </div>

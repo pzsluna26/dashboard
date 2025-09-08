@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const COLORS = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'];
+const default_colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'];
 
 interface GraphCardProps {
   title: string;
@@ -20,9 +20,12 @@ interface GraphCardProps {
       count: number;
     };
   };
+  color?:string[];
 }
 
-export default function GraphCard({ title, data }: GraphCardProps) {
+
+
+export default function GraphCard({ title, data, color }: GraphCardProps) {
   const router = useRouter();
 
   // 데이터 변환
@@ -31,13 +34,17 @@ export default function GraphCard({ title, data }: GraphCardProps) {
     count: value.count,
   }));
 
-  // 막대 클릭 이벤트 핸들러
+ // 날짜 클릭 이벤트 핸들러
   const handleBarClick = (data: any) => {
-    if (data && data.payload && data.payload.date) {
-      const selectedDate = data.payload.date;
-      router.push(`/news/${encodeURIComponent(title)}/${selectedDate}`);
-    }
-  };
+  if (data?.payload?.date) {
+    // 날짜를 YYYY-MM-DD -> YYYYMMDD 형식으로 변환
+    const formattedDate = data.payload.date.replace(/-/g, '');
+
+    // 워드클라우드 있는 상세페이지로 이동 (예시: /detail/20250101)
+    router.push(`/detail/${formattedDate}`);
+  }
+};
+
 
   return (
     <div className="bg-white p-4 rounded-lg w-full">
@@ -61,7 +68,7 @@ export default function GraphCard({ title, data }: GraphCardProps) {
             />
             <Bar
               dataKey="count"
-              fill={COLORS[0]}
+              fill={(color || default_colors)[0]}
               radius={[4, 4, 0, 0]}
               isAnimationActive={true}
               animationDuration={1200}
