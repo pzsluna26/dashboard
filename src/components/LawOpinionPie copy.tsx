@@ -10,9 +10,9 @@ import {
 } from 'recharts';
 import { useEffect, useState } from 'react';
 
-const COLORS = ['#4e73df', '#1cc88a', '#36b9cc']; // 찬성, 반대, 중립
+const COLORS = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'];
 
-interface LawOpinionPieProps {
+interface LawOpinionPieProps{
   lawName: string;
 }
 
@@ -33,27 +33,25 @@ type LawData = Record<
   }
 >;
 
-export default function LawOpinionPie({ lawName }: LawOpinionPieProps) {
+export default function LawOpinionPie({lawName}:LawOpinionPieProps) {
   const [data, setData] = useState<LawData | null>(null);
 
   useEffect(() => {
-    fetch('/data.json')
+    fetch('/law_data.json')
       .then((res) => res.json())
       .then(setData);
   }, []);
 
-  if (!data || !data[lawName]) {
+  if (!data || !data['개인정보보호법']) {
     return <p className="text-gray-500 text-sm">데이터를 불러오는 중...</p>;
   }
 
-  const socialData = data[lawName].social;
-
-  // 찬성, 반대, 중립 순으로 배열을 만들거나, json에 순서 맞춰서 넣으세요
-  const order = ['찬성', '반대', '중립'];
-  const chartData = order.map((key) => ({
-    name: key,
-    value: socialData[key] || 0,
-  }));
+  const chartData = Object.entries(data['개인정보보호법'].social).map(
+    ([source, count]) => ({
+      name: source,
+      value: count,
+    })
+  );
 
   return (
     <div className="w-full h-64">
@@ -66,9 +64,7 @@ export default function LawOpinionPie({ lawName }: LawOpinionPieProps) {
             cx="50%"
             cy="50%"
             outerRadius={70}
-            label={({ name, percent }) =>
-              `${name} ${(percent! * 100).toFixed(0)}%`
-            }
+            label
           >
             {chartData.map((_, i) => (
               <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />

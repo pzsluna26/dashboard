@@ -28,10 +28,10 @@ export default function Nav() {
 
       {/* 메뉴 hover 그룹 */}
       <div className="relative group mr-5 cursor-pointer">
-        <Image src="/image/menu.png" width={30} height={30} alt="menu" />
+        <Image src="/image/back.png" width={25} height={25} alt="back" onClick={()=>router.back()}/>
 
         {/* 오른쪽 슬라이드 메뉴 (hover 시 나타남) */}
-        <div className="fixed top-0 right-0 h-full w-60 bg-white shadow-lg p-6
+        {/* <div className="fixed top-0 right-0 h-full w-60 bg-white shadow-lg p-6
                 transform translate-x-full group-hover:translate-x-0
                 transition-transform duration-300 z-50">
           <h2 className="text-lg font-bold mb-4 text-gray-600">카테고리</h2>
@@ -47,7 +47,7 @@ export default function Nav() {
               </li>
             ))}
           </ul>
-        </div>
+        </div> */}
 
       </div>
     </header>
