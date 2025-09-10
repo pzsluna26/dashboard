@@ -3,10 +3,10 @@
 import Link from 'next/link';
 
 const categories = [
-  { name: '개인정보보호법', href: '/private' },
-  { name: '아동복지법', href: '/child' },
-  { name: '중대재해처벌법', href: '/safety' },
-  { name: '자본시장법', href: '/finance' },
+  { name: '개인정보보호법', href: '/news/category/privacy' },
+  { name: '아동복지법', href: '/news/category/child' },
+  { name: '중대재해처벌법', href: '/news/category/safety' },
+  { name: '자본시장법', href: '/news/category/finance' },
 ];
 
 // 예시용 인기 토픽
@@ -67,14 +67,14 @@ export default function Home() {
             <h2 className="text-4xl font-bold text-gray-800 mb-4">
            
             </h2>
-            <p className="text-lg text-gray-600">
+            {/* <p className="text-lg text-gray-600">
               사회적 이슈에 대한 여론과 뉴스를 시각적으로 확인하세요.
-            </p>
+            </p> */}
           </div>
         </div>
 
         {/* 우측 하단 인기 토픽 박스 */}
-        <div className="absolute bottom-20 right-6 z-10">
+        {/* <div className="absolute bottom-20 right-6 z-10">
           <div className="bg-white/60 backdrop-blur-sx shadow-md rounded-lg p-4 w-64">
             <h3 className="text-lg font-semibold mb-3 text-black">🔥 핫토픽 TOP 10</h3>
             <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
@@ -83,7 +83,7 @@ export default function Home() {
               ))}
             </ul>
           </div>
-        </div>
+        </div> */}
       </main>
     </div>
   );

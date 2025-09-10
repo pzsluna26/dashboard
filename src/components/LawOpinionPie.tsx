@@ -8,51 +8,23 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { useEffect, useState } from 'react';
 
 const COLORS = ['#4e73df', '#1cc88a', '#36b9cc']; // 찬성, 반대, 중립
 
 interface LawOpinionPieProps {
-  lawName: string;
+  social: Record<string, number>; // ✅ 이제 이거만 받는다
 }
 
-type LawData = Record<
-  string,
-  {
-    news: Record<
-      string,
-      {
-        count: number;
-        article: {
-          title: string;
-          content: string;
-        }[];
-      }
-    >;
-    social: Record<string, number>;
-  }
->;
-
-export default function LawOpinionPie({ lawName }: LawOpinionPieProps) {
-  const [data, setData] = useState<LawData | null>(null);
-
-  useEffect(() => {
-    fetch('/data.json')
-      .then((res) => res.json())
-      .then(setData);
-  }, []);
-
-  if (!data || !data[lawName]) {
+export default function LawOpinionPie({ social }: LawOpinionPieProps) {
+  // 🔸 데이터가 없을 경우 처리
+  if (!social) {
     return <p className="text-gray-500 text-sm">데이터를 불러오는 중...</p>;
   }
 
-  const socialData = data[lawName].social;
-
-  // 찬성, 반대, 중립 순으로 배열을 만들거나, json에 순서 맞춰서 넣으세요
   const order = ['찬성', '반대', '중립'];
   const chartData = order.map((key) => ({
     name: key,
-    value: socialData[key] || 0,
+    value: social[key] || 0,
   }));
 
   return (

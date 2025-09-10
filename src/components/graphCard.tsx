@@ -11,9 +11,21 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+type KeywordTrendChartProps = {
+  slug: string;
+};
+
 const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'];
 
-export default function KeywordTrendChart() {
+// slug → 한글 이름 매핑 (CategoryPage와 동일하게 맞추는 게 좋아요)
+const displayNameMap: Record<string, string> = {
+  privacy: '개인정보보호법',
+  finance: '자본시장법',
+  child: '아동복지법',
+  safety: '중대재해처벌법',
+};
+
+export default function KeywordTrendChart({ slug }: KeywordTrendChartProps) {
   const [lawData, setLawData] = useState<any>(null);
   const [incidentList, setIncidentList] = useState<
     { group: string; incident: string; incidentId: string }[]
@@ -23,11 +35,24 @@ export default function KeywordTrendChart() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/data.json');
+        console.log(`Fetching data for slug: ${slug}`);
+        const res = await fetch(`http://10.125.121.217:8080/api/news/category/${slug}`);
         const json = await res.json();
 
-        const groupMap = json['개인정보보호법']?.incident_groups;
-        if (!groupMap) return;
+        console.log('Received JSON:', json);
+
+        const lawSection = json[slug];
+
+        if (!lawSection) {
+          console.warn(`법률 섹션(${slug}) 데이터가 없습니다.`);
+          return;
+        }
+
+        const groupMap = lawSection.incident_groups;
+        if (!groupMap) {
+          console.warn('groupMap is undefined, 데이터 구조가 예상과 다를 수 있습니다.');
+          return;
+        }
 
         const list: { group: string; incident: string; incidentId: string }[] = [];
 
@@ -50,17 +75,15 @@ export default function KeywordTrendChart() {
     };
 
     fetchData();
-  }, []);
+  }, [slug]);
 
   if (!lawData || incidentList.length === 0) {
     return <div className="p-6 text-gray-600">로딩 중...</div>;
   }
 
-  // 선택된 소분류의 중분류(group) 추출
   const [selectedGroup] = selectedIncidentId.split('::');
   const selectedGroupData = lawData[selectedGroup];
 
-  // 중분류 전체 키워드 trend 합산
   const mergedTrend: { [keyword: string]: { [month: string]: number } } = {};
 
   for (const incident of Object.values(selectedGroupData)) {
@@ -76,7 +99,6 @@ export default function KeywordTrendChart() {
     }
   }
 
-  // recharts용 포맷
   const chartData = (() => {
     if (Object.keys(mergedTrend).length === 0) return [];
 
@@ -101,11 +123,10 @@ export default function KeywordTrendChart() {
             <li key={incidentId}>
               <button
                 onClick={() => setSelectedIncidentId(incidentId)}
-                className={`w-full text-left px-3 py-2 rounded-md ${
-                  selectedIncidentId === incidentId
+                className={`w-full text-left px-3 py-2 rounded-md ${selectedIncidentId === incidentId
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                  }`}
               >
                 {incident}
               </button>

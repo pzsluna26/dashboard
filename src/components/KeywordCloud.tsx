@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import {useRouter} from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface KeywordCloudProps {
   keywords: string[];
-  onKeywordClick? (keyword:string): void;
+  onKeywordClick?(keyword: string): void;
   selectedDate: string;
 }
 
@@ -16,13 +16,16 @@ function formatDateToKey(dateStr: string): string {
   return dateStr.replace(/-/g, '');
 }
 
-export default function KeywordCloud({ keywords,selectedDate, onKeywordClick }: KeywordCloudProps) {
+export default function KeywordCloud({ keywords, selectedDate, onKeywordClick }: KeywordCloudProps) {
   const router = useRouter();
   const [scale, setScale] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 300, height: 300 });
 
-  // 부모 컨테이너 크기 읽어서 size 상태에 저장
+  // 콘솔로 keywords와 selectedDate 출력해 확인하기
+  console.log('KeywordCloud keywords:', keywords);
+  console.log('KeywordCloud selectedDate:', selectedDate);
+
   useEffect(() => {
     function updateSize() {
       if (containerRef.current) {
@@ -109,19 +112,12 @@ export default function KeywordCloud({ keywords,selectedDate, onKeywordClick }: 
               borderRadius: 6,
               backgroundColor: 'rgba(255, 255, 255, 0.6)',
             }}
-
-
-
-            // 키워드 상세페이지로 이동
-            onClick={()=> {
-              if(onKeywordClick) onKeywordClick(word);
-              router.push(`/detail/${selectedDate.replace(/-/g, '')}/${encodeURIComponent(word)}`);
+            onClick={() => {
+              if (onKeywordClick) onKeywordClick(word);
+              const dateKey = formatDateToKey(selectedDate);
+              router.push(`/detail/${dateKey}/${encodeURIComponent(word)}`);
               console.log('Clicked keyword:', word);
             }}
-
-
-
-
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'scale(1.3)';
               e.currentTarget.style.zIndex = '10';
