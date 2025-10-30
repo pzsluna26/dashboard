@@ -1,90 +1,137 @@
-'use client';
+// app/page.tsx
+"use client";
+import { useState, useEffect, useMemo } from "react";
 
-import Link from 'next/link';
+import KpiSummary from "@/features/news/components/KpiSummary";
+import { transformRawData } from "@/features/news/components/transformRawData";
+import { computeKpis } from "@/shared/utils/computeKpis";
+import type { PeriodKey } from "@/shared/types/common";
 
-const categories = [
-  { name: '개인정보보호법', href: '/news/category/privacy' },
-  { name: '아동복지법', href: '/news/category/child' },
-  { name: '중대재해처벌법', href: '/news/category/safety' },
-  { name: '자본시장법', href: '/news/category/finance' },
-];
+import Remote from "@/shared/layout/Remote";
+import BackgroundGradient from "@/shared/layout/BackgroundGradient";
+import Nav from "@/shared/layout/Nav";
 
-// 예시용 인기 토픽
-const popularTopics = [
-  '디지털 정보',
-  '청소년 보호',
-  '노동자 안전',
-  '금융 투자',
-  '데이터 유출',
-  '산재 사고',
-  '미성년자 범죄',
-  'SNS 여론',
-  '법 개정',
-  '플랫폼 규제',
-];
+function formatKR(d: string) {
+  if (!d) return "";
+  const [y, m, dd] = d.split("-");
+  return `${y}.${m}.${dd}`;
+}
 
-export default function Home() {
+export default function Dashboard() {
+  const [period] = useState<PeriodKey>("weekly_timeline");
+
+  const [data, setData] = useState<any>(null);
+  const [trend, setTrend] = useState<any>(null);
+  const [kpis, setKpis] = useState<any>(null);
+
+  // ✅ Remote(좌측 리모컨)에서 제어되는 조회기간
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+
+  const displayPeriod = useMemo(() => {
+    if (startDate && endDate) return `${formatKR(startDate)} ~ ${formatKR(endDate)}`;
+    return "기간 미선택 (좌측 ‘기간선택’에서 최대 14일 범위를 지정하세요)";
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    async function fetchData() {
+      const res = await fetch("/data/data.json", { cache: "no-store" });
+      const all = await res.json();
+      setData(all);
+
+      // ✅ 기간 필터를 transform/compute에 전달
+      const transformed = transformRawData(all, period, { startDate, endDate });
+      setTrend(transformed);
+
+      const nextKpis = computeKpis(all, period, { startDate, endDate });
+      setKpis(nextKpis);
+    }
+    fetchData();
+  }, [period, startDate, endDate]);
+
+  if (!data || !trend || !kpis) {
+    return (
+      <div className="w-full h-screen grid place-items-center bg-[#C8D4E5] text-neutral-700">
+        Loading...
+      </div>
+    );
+  }
+
+  const currentTitle = "종합분석";
+
   return (
-    <div className="flex h-screen w-screen font-sans text-gray-800">
-      {/* 왼쪽 사이드 메뉴 */}
-      <aside className="w-64 bg-white border-r border-gray-200 shadow-sm p-6 flex flex-col justify-center">
-        {/* <h1 className="text-2xl font-bold mb-10 text-blue-600 text-center">
-          
-        </h1> */}
-        <ul className="space-y-6 text-lg font-medium">
-          {categories.map((cat) => (
-            <li key={cat.name}>
-              <Link
-                href={cat.href}
-                className="hover:text-blue-600 transition-colors duration-200 block"
-              >
-                {cat.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </aside>
+    <div className="relative min-h-screen w-full text-neutral-900 overflow-hidden">
+      <Nav title={currentTitle} period={period} showSearch={true} />
+      <BackgroundGradient
+        stops={["#ced7dc", "#eaebed", "#f6efec", "#f8e7e0"]}
+        highlights
+        glass
+      />
 
-      {/* 오른쪽 비디오 배경 영역 */}
-      <main className="flex-1 relative overflow-hidden">
-        {/* 배경 비디오 */}
-        <video
-          src="/video/video1.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute top-0 left-0 w-full h-full object-cover"
-        />
+      <Remote
+        startDate={startDate}
+        endDate={endDate}
+        onDateRangeChange={(s, e) => {
+          setStartDate(s);
+          setEndDate(e);
+        }}
+      />
 
-        {/* 흐림 오버레이 */}
-        {/* <div className="absolute top-0 left-0 w-full h-full bg-white/20 backdrop-blur-sm" /> */}
-        <div className="absolute top-0 left-0 w-full h-full" />
-
-        {/* 중앙 텍스트 */}
-        <div className="relative z-10 flex items-center justify-center h-full">
-          <div className="text-center px-4">
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">
-           
+      <div className="flex w-full mx-auto mt-15">
+        <aside className="w-[130px] flex flex-col items-center py-6" />
+        <main
+          className="flex flex-col p-10 bg-white/25 backdrop-blur-md
+                     shadow-[0_12px_40px_rgba(20,30,60,0.05)] flex-1"
+        >
+          <div className="flex items-center justify-between px-7 py-5">
+            <h2 className="font-jua mt-2 text-4xl md:text-5xl font-semibold text-[#2D2928] drop-shadow-sm">
+              {currentTitle}
             </h2>
-            {/* <p className="text-lg text-gray-600">
-              사회적 이슈에 대한 여론과 뉴스를 시각적으로 확인하세요.
-            </p> */}
           </div>
-        </div>
 
-        {/* 우측 하단 인기 토픽 박스 */}
-        {/* <div className="absolute bottom-20 right-6 z-10">
-          <div className="bg-white/60 backdrop-blur-sx shadow-md rounded-lg p-4 w-64">
-            <h3 className="text-lg font-semibold mb-3 text-black">🔥 핫토픽 TOP 10</h3>
-            <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
-              {popularTopics.map((topic, index) => (
-                <li key={index}>{topic}</li>
-              ))}
-            </ul>
+          <div className="px-7 py-2 text-[#2D2928]/70">
+            현재 <strong className="font-jua text-[#2D2928]">{displayPeriod}</strong> 기준으로{" "}
+            <strong className="font-jua text-[#2D2928]">{currentTitle}</strong>을(를) 분석합니다.
           </div>
-        </div> */}
-      </main>
+
+          <div className="flex flex-col space-y-6">
+            <section>{/* (공란 유지 가능) */}</section>
+
+            {/* ✅ 두번째 섹션: 좌 2/3( KPI ), 우 1/3(보조패널) */}
+            <section className="bg-white/35 backdrop-blur-md rounded-3xl p-4 border border-white/50">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* 좌측 2/3: KPI 요약지표 */}
+                <div className="lg:col-span-2">
+                  <KpiSummary
+                    kpis={kpis}
+                    periodLabel={displayPeriod}
+                    startDate={startDate}
+                    endDate={endDate}
+                  />
+                </div>
+
+                {/* 우측 1/3: 보조 패널(원하면 비워두세요) */}
+                <aside className="lg:col-span-1">
+                  <div className="h-full rounded-2xl bg-white/55 backdrop-blur-md border border-white/60 p-4">
+                    <div className="text-sm text-neutral-500 font-medium">보조 패널</div>
+                    <div className="mt-2 text-sm text-neutral-700">
+                      • 기간: {displayPeriod}
+                      <br />
+                      • 안내/필터/요약 노트 등 배치
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            {/* 아래 영역은 그대로 유지 */}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1 bg-white/35 backdrop-blur-md rounded-2xl p-4 border border-white/50" />
+              <div className="lg:col-span-2 h-full bg-white/35 backdrop-blur-md rounded-2xl p-4 border border-white/50" />
+            </section>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

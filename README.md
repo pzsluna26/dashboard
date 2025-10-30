@@ -1,40 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 포켓몬
+> 안녕하세요
 
-## Getting Started
+## 설치/준비
+- python >= 3.12 
+- pyTorch >= 2.8
+    - 가능하면 GPU 사용(cu126)
 
-First, run the development server:
+## 참고자료
+- 하이
+- 바이
+- [포켓몬위키](https://ko.wikipedia.org/wiki/%ED%8F%AC%EC%BC%93%EB%AA%AC%EC%8A%A4%ED%84%B0)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pip install -r 라이브러리.txt
+python ./src/main.py
+('학습'은 적으면 안됨, '예측'을 적어야 함)
 ```
+- 모델은 아래 링크를 사용하세요.
+    - 모델1
+    - 모델2
+    - 모델3
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 노트 및 소개
+### python 
+- src 폴더에 있는 파일 간략하게 소개
+- pre...
+### notebook
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-"# mynext" 
-"# mynext" 
-"# miniproject" 
-"# miniproject2" 
+## 라이센스
+mit

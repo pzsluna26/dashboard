@@ -1,103 +1,199 @@
-'use client';
+﻿"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import LawOpinionPie from '@/components/LawOpinionPie';
-import KeywordCloud from '@/components/KeywordCloud';
-import KeywordTrendChart from '@/components/graphCard';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-// 필요한 타입 정의 (추후 필요 시 확장 가능)
-type NewsData = any;
+import NivoTrendChart from "@/features/news/components/NivoTrendChart/index";
+import BackgroundLayer from "@/shared/layout/BackgroundLayer";
+import Nav from "@/shared/layout/Nav";
+
+import { CATEGORIES } from "@/shared/constants/navigation";
+import { PERIOD_LABEL_MAP } from "@/shared/constants/labels";
+
+import type { PeriodKey, Sentiment } from "@/shared/types/common";
+import PeriodSelect from "@/features/news/components/NivoTrendChart/PeriodSelect";
+
+const PERIOD_API_MAP = {
+  daily_timeline: "daily",
+  weekly_timeline: "weekly",
+  monthly_timeline: "monthly",
+} as const;
 
 export default function CategoryPage() {
-  const { slug } = useParams<{ slug: string }>();
-  const [data, setData] = useState<NewsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState('');
+  const router = useRouter();
+  const params = useParams();
 
-  const handleDateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = event.target.value;
-    const formatted = `${val.slice(0, 4)}-${val.slice(4, 6)}-${val.slice(6, 8)}`;
-    setSelectedDate(formatted);
-  };
+  const slugRaw = params?.slug as string | string[];
+  const slug = Array.isArray(slugRaw) ? slugRaw[0] : slugRaw;
 
-  // slug → 한글 이름 매핑
-  const displayNameMap: Record<string, string> = {
-    privacy: '개인정보보호법',
-    finance: '자본시장법 외',
-    child: '아동복지법',
-    safety: '중대재해처벌법',
-  };
-  const displayName = slug ? displayNameMap[slug] ?? slug : '';
+  const [period, setPeriod] = useState<PeriodKey>("weekly_timeline");
+  const [data, setData] = useState<any>(null);
+  const [socialDetail, setSocialDetail] = useState<null | { date: string; sentiment: Sentiment }>(null);
+  const [view, setView] = useState<"news" | "social">("news");
+
+  const periodLabel = PERIOD_LABEL_MAP[period];
+  const filteredCategories = useMemo(() => CATEGORIES.filter((c) => c.name !== "종합분석"), []);
+  const currentCat = useMemo(
+    () => filteredCategories.find((c) => c.key === slug) ?? filteredCategories[0],
+    [slug, filteredCategories]
+  );
+
+  const newsResetRef = useRef<() => void>(() => {});
+  const socialResetRef = useRef<() => void>(() => {});
+
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({
+    first: null,
+    second: null,
+    third: null,
+    fourth: null,
+    fifth: null,
+  });
 
   useEffect(() => {
-    if (!slug) return;
+  async function fetchData() {
+    if (!slug || !period) return;
 
-    setLoading(true);
+    const apiPeriod = PERIOD_API_MAP[period];
 
-    fetch(`http://10.125.121.217:8080/api/news/category/${slug}`)
-      .then((res) => res.json())
-      .then((json) => {
-        console.log('스프링에서 받아온 뉴스 데이터:', json);
+    try {
+      const res = await fetch(`http://10.125.121.213:8080/api/news/category/${slug}/${apiPeriod}`, {
+      //const res = await fetch("/data/data.json",
+        cache: "no-store",
+      });
 
-        const lawData = json[slug]; // 
-        console.log('👉 이 법률에 해당하는 데이터:', lawData);
+      if (!res.ok) {
+        console.error("❌ API fetch failed:", res.status);
+        return;
+      }
 
-        if (!lawData) {
-          setData(null);
-        } else {
-          setData(lawData);
+      const json = await res.json();
+
+      // ✅ "아동복지법" 같은 최상위 키를 한 단계 풀기
+      const firstKey = Object.keys(json)[0];
+      const coreData = json[firstKey];
+
+      // ✅ 기존 구조 맞춰 래핑
+      const normalizedData = {
+        news: {
+          [period]: coreData.news?.[apiPeriod + "_timeline"] || coreData.news || {}
+        },
+        social: {
+          [period]: coreData.social?.[apiPeriod + "_timeline"] || coreData.social || {}
         }
+      };
 
-        const dummyDate = '2025-01-01';
-        setSelectedDate(dummyDate);
-      })
-      .catch((err) => {
-        console.error('데이터 로딩 실패:', err);
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [slug]);
+      console.log("🟢 [Normalized Data]", normalizedData);
+      setData(normalizedData);
+      setSocialDetail(null);
+    } catch (error) {
+      console.error("❌ Fetch error:", error);
+    }
+  }
 
-  if (loading) return <p className="p-4">로딩 중...</p>;
-  if (!data) return <p className="p-4 text-red-500">데이터 없음</p>;
+  fetchData();
+}, [slug, period]);
 
-  const dateOptions = ['20250101', '20250201']; // 나중에 data.news에서 자동 추출 가능
 
-  // 여기서 keyword_trend 객체에서 키워드 배열 생성
-  const keywordTrendData = data?.incident_groups?.['중분류1']?.['소분류1(사건)']?.keyword_trend;
-  const keywords = keywordTrendData ? Object.keys(keywordTrendData) : [];
+
+  useEffect(() => {
+    if (view === "news") {
+      setSocialDetail(null);
+    }
+  }, [view]);
+
+  const newsByPeriod = data?.news?.[period] ?? {};
+  const socialByPeriod = data?.social?.[period] ?? {};
+
+  if (!data) {
+    return (
+      <div className="w-full h-screen grid place-items-center bg-white text-neutral-700">
+        Loading...
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-gray-50 rounded-xl w-full min-h-screen flex flex-col items-center">
-      <div className="rounded-xl border border-gray-200 shadow-sm mt-10 w-full max-w-5xl">
-        {slug && <KeywordTrendChart slug={slug} />}
+    <div className="relative min-h-screen w-full text-neutral-700 overflow-auto">
+      {/* Sticky Nav */}
+      <div className="z-10 sticky top-0">
+        <Nav title={`${currentCat.name} 뉴스분석`} period={period} setPeriod={setPeriod} showSearch={true} />
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mt-10 w-full max-w-5xl max-h-[400px]">
-        <div className="w-full md:basis-2/5 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex justify-between">
-            <h2 className="text-lg font-semibold mb-6 text-gray-800">여론</h2>
-            <span className="text-sm mb-4 text-gray-800">
-              찬성 {data.social?.찬성 ?? 0}% 반대 {data.social?.반대 ?? 0}% 중립 {data.social?.중립 ?? 0}%
-            </span>
-          </div>
-          <LawOpinionPie social={data.social} />
-        </div>
+      {/* Section Navigation Buttons */}
+      <div className="fixed right-8 top-1/2 -translate-y-1/2 flex flex-col items-center space-y-6 z-50">
+        {["first", "second", "third", "fourth", "fifth"].map((id) => (
+          <button
+            key={id}
+            className="w-4 h-4 rounded-full bg-gray-400 hover:bg-gray-800 transition-all duration-300"
+            onClick={() => {
+              sectionRefs.current[id]?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
+          />
+        ))}
+      </div>
 
-        <div className="w-full md:basis-3/5 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex w-full justify-between items-center">
-            <h2 className="text-lg font-semibold mb-4 text-gray-800">핫이슈</h2>
-            <select value={selectedDate.replace(/-/g, '')} onChange={handleDateChange}>
-              {dateOptions.map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-            </select>
+      {/* Main Content */}
+      <div className="flex w-full h-full">
+        <main className="flex-1 flex flex-col bg-white backdrop-blur-md shadow-[0_12px_40px_rgba(20,30,60,0.12)] overflow-y-auto scroll-smooth">
+          {/* 1️⃣ 첫번째 섹션 - Hero 스타일 */}
+          <div
+            ref={(el) => (sectionRefs.current.first = el)}
+            className="relative min-h-[40vh] flex items-center justify-center bg-white text-white"
+          >
+            <div className="absolute inset-0 z-0 overflow-hidden rounded-br-[250px]">
+              <img
+                src="/main/main1.jpg"
+                alt="Dashboard Intro"
+                className="w-full h-full object-cover brightness-90"
+              />
+              <div className="absolute inset-0 backdrop-blur-sm bg-black/40" />
+            </div>
+
+            <div className="relative z-10 w-[90%] mx-auto px-3 py-2 scroll-mt-[100px]">
+              <h2 style={{ fontFamily: "'Black Han Sans', sans-serif" }} className="text-3xl md:text-5xl mt-20">
+                '{currentCat.name}' 뉴스분석
+              </h2>
+              <div className="mt-4 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                <p className="text-lg">
+                  현재 <strong>{periodLabel}</strong> 단위로{" "}
+                  <strong>{currentCat.name}</strong>이(가) 분석됩니다.
+                </p>
+                <PeriodSelect value={period} onChange={setPeriod} />
+              </div>
+            </div>
           </div>
-          <KeywordCloud keywords={keywords} selectedDate={selectedDate} />
-        </div>
+
+          {/* 2️⃣ Nivo Chart 섹션 */}
+          <div
+            ref={(el) => (sectionRefs.current.second = el)}
+            className="w-full bg-white flex items-center"
+          >
+            <div className="w-[80%] mx-auto">
+              <div className="w-full mx-auto mt-10 mb-10">
+                <NivoTrendChart
+                  newsTimeline={newsByPeriod}
+                  socialTimeline={socialByPeriod}
+                  periodLabel={periodLabel}
+                  view={view}
+                  slug={slug}
+                  setView={setView}
+                  onSocialSliceClick={(date, sentiment) => {
+                    setSocialDetail({ date, sentiment });
+                  }}
+                  onInitResetRef={(fn) => {
+                    newsResetRef.current = fn;
+                  }}
+                  onSocialResetRef={(fn) => {
+                    socialResetRef.current = fn;
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
