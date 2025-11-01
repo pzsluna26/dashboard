@@ -41,6 +41,7 @@
     "fullpage.js": "^4.0.37",
     "highcharts": "^12.4.0",
     "highcharts-react-official": "^3.2.3",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "jotai": "^2.13.1",
     "jspdf": "^3.0.3",

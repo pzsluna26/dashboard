@@ -80,7 +80,7 @@ export default function Remote({
 
   // 시작일 선택 후 30일 초과 날짜 클릭 불가
   const disabledMatchers = useMemo(() => {
-    if (!range.from || range.to) return [];
+    if (!range.from || range.to) return [] as any[];
     const maxEnd = addDays(range.from, MAX_RANGE_DAYS - 1);
     return [(d: Date) => isAfter(d, maxEnd)];
   }, [range.from, range.to]);
@@ -117,60 +117,146 @@ export default function Remote({
   }, [open]);
 
   // -------- 캡처/다운로드 유틸 --------
+  // html2canvas가 CSS Color 4(예: lab())를 파싱하지 못해 실패하는 경우가 있어
+  // 기본은 html-to-image로 캡처하고, 실패 시 html2canvas로 폴백합니다.
   async function captureNodeToCanvas(target: HTMLElement) {
-    const html2canvas = (await import("html2canvas")).default;
-    return html2canvas(target, {
-      useCORS: true,
-      scale: window.devicePixelRatio > 1 ? 2 : 1.5,
-      backgroundColor: null,
-      windowWidth: target.scrollWidth,
-      windowHeight: target.scrollHeight,
-    });
+    // 캔버스 최대 치수(브라우저에 따라 16384~32767 제한). 보수적으로 16384 사용
+    const MAX_DIM = 16384;
+    const nodeW = target.scrollWidth || target.clientWidth || target.offsetWidth;
+    const nodeH = target.scrollHeight || target.clientHeight || target.offsetHeight;
+
+    // 과도한 픽셀 크기로 잘리는 문제 방지: 안전 픽셀 비율 계산
+    const baseRatio = window.devicePixelRatio > 1 ? 2 : 1.5;
+    const safeRatio = Math.min(baseRatio, MAX_DIM / Math.max(nodeW, nodeH));
+
+    // 캡처에서 제외하고 싶은 요소는 data-capture-skip 속성을 달아주세요
+    const filter = (el: Element) => !(el as HTMLElement).dataset?.captureSkip;
+
+    try {
+      const htmlToImage = await import("html-to-image");
+      const canvas = await htmlToImage.toCanvas(target, {
+        cacheBust: true,
+        pixelRatio: safeRatio,
+        backgroundColor: "#ffffff", // PDF에서 투명 배경이 검게 보이는 현상 방지
+        width: nodeW,
+        height: nodeH,
+        style: { transform: "none", transformOrigin: "top left" },
+        filter,
+      } as any);
+      return canvas;
+    } catch (err) {
+      console.warn("html-to-image 실패, html2canvas로 폴백합니다:", err);
+      const html2canvas = (await import("html2canvas")).default;
+      return html2canvas(target, {
+        useCORS: true,
+        foreignObjectRendering: true,
+        scale: safeRatio,
+        backgroundColor: "#ffffff",
+        width: nodeW,
+        height: nodeH,
+        windowWidth: nodeW,
+        windowHeight: nodeH,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        onclone: (doc) => {
+          // lab()/color() 등을 가진 요소 보정
+          const all = Array.from(doc.querySelectorAll<HTMLElement>("*"));
+          for (const el of all) {
+            if ((el as any).dataset?.captureSkip) {
+              el.style.display = "none";
+              continue;
+            }
+            const cs = (el.ownerDocument!.defaultView as Window).getComputedStyle(el);
+            const bgImg = cs.getPropertyValue("background-image");
+            if (/lab\(/i.test(bgImg) || /color\(/i.test(bgImg)) {
+              el.style.backgroundImage = "none";
+              const bgColor = cs.getPropertyValue("background-color");
+              if (bgColor) el.style.backgroundColor = bgColor;
+            }
+            const color = cs.getPropertyValue("color");
+            if (/lab\(/i.test(color) || /color\(/i.test(color)) {
+              el.style.color = color;
+            }
+            // fixed/sticky 요소가 잘리는 경우 임시로 static 처리
+            const pos = cs.getPropertyValue("position");
+            if (pos === "fixed") {
+              el.style.position = "absolute"; // 화면 기준 → 문서 기준으로 변경
+            }
+          }
+        },
+      });
+    }
   }
 
   async function handleDownloadPNG() {
-    const target = captureRef?.current ?? document.body;
-    const canvas = await captureNodeToCanvas(target as HTMLElement);
-    const a = document.createElement("a");
-    a.href = canvas.toDataURL("image/png");
-    a.download = `dashboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.png`;
-    a.click();
+    try {
+      const target = captureRef?.current ?? document.body;
+      const canvas = await captureNodeToCanvas(target as HTMLElement);
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `dashboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.png`;
+      a.click();
+    } catch (err) {
+      console.error("PNG 생성 실패:", err);
+      alert("PNG 생성 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
+    }
   }
 
   async function handleDownloadPDF() {
-    const target = captureRef?.current ?? document.body;
-    const canvas = await captureNodeToCanvas(target as HTMLElement);
-    const imgData = canvas.toDataURL("image/jpeg", 0.95);
-    const { jsPDF } = await import("jspdf");
-    const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const pxToMm = (px: number) => px * 0.264583;
-    const imgW = pxToMm(canvas.width);
-    const imgH = pxToMm(canvas.height);
-    const scale = pageW / imgW;
-    const finalW = pageW;
-    const finalH = imgH * scale;
+    try {
+      const target = captureRef?.current ?? document.body;
+      const canvas = await captureNodeToCanvas(target as HTMLElement);
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
 
-    if (finalH <= pageH) {
-      pdf.addImage(imgData, "JPEG", 0, 0, finalW, finalH);
-    } else {
-      let y = 0;
-      const pagePx = pageH / 0.264583 / scale;
-      while (y < canvas.height) {
-        const slice = document.createElement("canvas");
-        slice.width = canvas.width;
-        slice.height = Math.min(pagePx, canvas.height - y);
-        const sctx = slice.getContext("2d")!;
-        sctx.drawImage(canvas, 0, y, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
-        const sliceData = slice.toDataURL("image/jpeg", 0.95);
-        if (y > 0) pdf.addPage();
-        const sliceHmm = pxToMm(slice.height) * scale;
-        pdf.addImage(sliceData, "JPEG", 0, 0, finalW, sliceHmm);
-        y += pagePx;
+      // ✅ jspdf 안전 임포트 (named | default 모두 대응)
+      const jspdfMod: any = await import("jspdf");
+      const JsPDF = jspdfMod.jsPDF || jspdfMod.default;
+      if (!JsPDF) throw new Error("jsPDF export not found");
+
+      const pdf = new JsPDF({ orientation: "p", unit: "mm", format: "a4" });
+
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const pxToMm = (px: number) => px * 0.264583;
+      const imgW = pxToMm(canvas.width);
+      const imgH = pxToMm(canvas.height);
+      const scale = pageW / imgW;
+      const finalW = pageW;
+      const finalH = imgH * scale;
+
+      if (finalH <= pageH) {
+        pdf.addImage(imgData, "JPEG", 0, 0, finalW, finalH);
+      } else {
+        let y = 0;
+        const pagePx = pageH / 0.264583 / scale; // mm -> px -> 스케일 보정
+        while (y < canvas.height) {
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = Math.min(pagePx, canvas.height - y);
+          const sctx = slice.getContext("2d")!;
+          sctx.drawImage(canvas, 0, y, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
+          const sliceData = slice.toDataURL("image/jpeg", 0.95);
+          if (y > 0) pdf.addPage();
+          const sliceHmm = pxToMm(slice.height) * scale;
+          pdf.addImage(sliceData, "JPEG", 0, 0, finalW, sliceHmm);
+          y += pagePx;
+        }
       }
+
+      // 저장 시도 (중첩 try/catch 제거)
+      let saved = false;
+      try {
+        pdf.save(`dashboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.pdf`);
+        saved = true;
+      } catch (_e) {/* noop */}
+      if (!saved) {
+        const blobUrl = pdf.output("bloburl");
+        window.open(blobUrl, "_blank");
+      }
+    } catch (err) {
+      console.error("PDF 생성 실패:", err);
+      alert("PDF 생성 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
     }
-    pdf.save(`dashboard_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.pdf`);
   }
 
   return (
