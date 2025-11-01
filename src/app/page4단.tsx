@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 
-import KpiSummary from "@/features/total/components/KpiSummary";
+import KpiSummary from "@/features/news/components/KpiSummary";
 import { transformRawData } from "@/features/news/components/transformRawData";
 import { computeKpis } from "@/shared/utils/computeKpis";
 import type { PeriodKey } from "@/shared/types/common";
@@ -24,8 +24,13 @@ const LegislativeStanceArea = dynamic(
   { ssr: false, loading: () => <div className="h-[310px] grid place-items-center text-neutral-400">Loading…</div> }
 );
 
+const RisingHotNews = dynamic(
+  () => import("@/features/total/components/RisingHotNews"),
+  { ssr: false, loading: () => <div className="h-[310px] grid place-items-center text-neutral-400">Loading…</div> }
+);
+
 const Heatmap = dynamic(
-  () => import("@/features/total/components/Heatmap"),
+  () => import("@/features/total/components/Heatmap"), // = LegislativeFieldHeatmap 구현본
   { ssr: false, loading: () => <div className="h-[310px] grid place-items-center text-neutral-400">Loading…</div> }
 );
 
@@ -39,20 +44,11 @@ function LegislativeRanking({ periodLabel }: { periodLabel: string }) {
   );
 }
 
-/** 공통 카드: 기본 높이 유지, 개별 카드에서 bodyClass로 오버라이드 가능 */
-function ChartCard({
-  title,
-  children,
-  bodyClass = "h-[310px] lg:h-[300px]",
-}: {
-  title: string;
-  children?: React.ReactNode;
-  bodyClass?: string;
-}) {
+function ChartCard({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="h-full rounded-2xl bg-white/55 backdrop-blur-md border border-white/60 p-4">
       <div className="text-sm text-neutral-500 font-medium">{title}</div>
-      <div className={`mt-3 grid place-items-center text-neutral-400 w-full ${bodyClass}`}>
+      <div className="mt-3 h:[310px] lg:h-[300px] h-[310px] grid place-items-center text-neutral-400 w-full">
         {children ?? <span>Chart placeholder</span>}
       </div>
     </div>
@@ -95,8 +91,6 @@ export default function Dashboard() {
       setKpis(nextKpis);
     }
     fetchData();
-      console.log("사용자 지정 날짜로 업데이트", { startDate, endDate });
-
   }, [period, startDate, endDate]);
 
   if (!data || !trend || !kpis) {
@@ -122,12 +116,10 @@ export default function Dashboard() {
         startDate={startDate}
         endDate={endDate}
         onDateRangeChange={(s, e) => {
-          console.log("사용자 지정기간", { s, e });
           setStartDate(s);
           setEndDate(e);
         }}
       />
-
 
       <div className="flex w-full mx-auto mt-5">
         <aside className="w-[140px] flex flex-col items-center py-6" />
@@ -188,11 +180,16 @@ export default function Dashboard() {
             </section>
 
             {/* ─────────────────────────────────────────────
-               3단: 좌 1/2 막대(SocialBarChart-확장 높이) · 우 1/2 (상) 스택/파이 · (하) 히트맵
+               3단: 좌 1/2 스택/에어리어 · 우 1/2 여론분포
             ───────────────────────────────────────────── */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 좌측: 법안별 여론 성향 (막대) - 이 카드만 넓은 높이 적용 */}
-              <ChartCard title="법안별 여론 성향 (막대)" bodyClass="min-h-[420px] lg:min-h-[680px]">
+              <ChartCard title="여론 성향 분포 (파이/스택)">
+                <div className="w-full h-full">
+                  <LegislativeStanceArea data={data} />
+                </div>
+              </ChartCard>
+
+              <ChartCard title="법안별 여론 성향 (막대)">
                 <div className="w-full h-full">
                   <SocialBarChart
                     data={data}
@@ -202,31 +199,31 @@ export default function Dashboard() {
                   />
                 </div>
               </ChartCard>
-
-              {/* 우측: 상/하 1:1 그리드 → (상) 여론 성향 분포, (하) 분야별 히트맵 (기본 높이 유지) */}
-              <div className="grid grid-rows-2 gap-6 h-full w-full">
-                <ChartCard title="여론 성향 추이 (스택)">
-                  <div className="w-full h-full">
-                    <LegislativeStanceArea
-                      data={data}
-                      startDate={startDate}
-                      endDate={endDate}
-                    />
-                  </div>
-                </ChartCard>
-
-                <ChartCard title="분야별 히트맵">
-                  <div className="w-full h-full">
-                    <Heatmap
-                      data={data}
-                      period={period}          // 'daily_timeline' | 'weekly_timeline' | 'monthly_timeline'
-                      startDate={startDate}    // Remote에서 선택된 날짜 범위(일 단위일 때 필터)
-                      endDate={endDate}
-                    />
-                  </div>
-                </ChartCard>
-              </div>
             </section>
+
+            {/* ─────────────────────────────────────────────
+               4단: 좌 1/2 분야별 히트맵 · 우 1/2 급상승 이슈(placeholder)
+            ───────────────────────────────────────────── */}
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartCard title="급상승 뉴스">
+                <div className="w-full h-full">
+                  {/* RisingHotNews는 내부에서 현재시간 사용 → ssr:false로 동적 임포트 */}
+                  <RisingHotNews data={data} maxItems={5} days={7} moreHref="/news" />
+                </div>
+              </ChartCard>
+
+              <ChartCard title="분야별 히트맵">
+                <div className="w-full h-full">
+                  <Heatmap
+                    data={data}
+                    period={period}          // 'daily_timeline' | 'weekly_timeline' | 'monthly_timeline'
+                    startDate={startDate}    // Remote에서 선택된 날짜 범위(일 단위일 때 필터)
+                    endDate={endDate}
+                  />
+                </div>
+              </ChartCard>
+            </section>
+
           </div>
         </main>
       </div>

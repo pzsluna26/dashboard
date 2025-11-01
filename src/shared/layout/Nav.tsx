@@ -57,7 +57,7 @@ export default function Nav({
     >
       {/* ✅ Nav Bar */}
       <nav
-        className="fixed top-0 left-0 w-full h-[80px] bg-gray-900/10 flex justify-center shadow z-50 overflow-visible backdrop-blur-md"
+        className="fixed top-0 left-0 w-full h-[60px] bg-gray-900/10 flex justify-center shadow z-50 overflow-visible backdrop-blur-md"
         onMouseEnter={() => {}} // hover 유지
       >
         <div className="relative w-full h-full flex items-center px-6">

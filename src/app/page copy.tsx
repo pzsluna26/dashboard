@@ -1,8 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import dynamic from "next/dynamic";
 
-import KpiSummary from "@/features/total/components/KpiSummary";
+import KpiSummary from "@/features/news/components/KpiSummary";
 import { transformRawData } from "@/features/news/components/transformRawData";
 import { computeKpis } from "@/shared/utils/computeKpis";
 import type { PeriodKey } from "@/shared/types/common";
@@ -11,25 +10,12 @@ import Remote from "@/shared/layout/Remote";
 import BackgroundGradient from "@/shared/layout/BackgroundGradient";
 import Nav from "@/shared/layout/Nav";
 import LegalTop5 from "@/features/total/components/LegalTop5";
-import SocialBarChart from "@/features/total/components/SocailBarChart";
+import NetworkGraph from "@/features/total/components/NetworkGraph";
+import R3Top3LawTrend from "@/features/total/components/R3Top3LawTrend";
 
-/** 클라이언트 전용(차트/캔버스/현재시간 의존) 컴포넌트는 동적 임포트 + ssr:false */
-const NetworkGraph = dynamic(
-  () => import("@/features/total/components/NetworkGraph"),
-  { ssr: false, loading: () => <div className="h-[310px] grid place-items-center text-neutral-400">Loading…</div> }
-);
-
-const LegislativeStanceArea = dynamic(
-  () => import("@/features/total/components/LegislativeStanceArea"),
-  { ssr: false, loading: () => <div className="h-[310px] grid place-items-center text-neutral-400">Loading…</div> }
-);
-
-const Heatmap = dynamic(
-  () => import("@/features/total/components/Heatmap"),
-  { ssr: false, loading: () => <div className="h-[310px] grid place-items-center text-neutral-400">Loading…</div> }
-);
-
-/** 카드 래퍼 */
+/**
+ * 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체하세요)
+ */
 function LegislativeRanking({ periodLabel }: { periodLabel: string }) {
   return (
     <div className="h-full rounded-2xl bg-white/55 backdrop-blur-md border border-white/60 p-4">
@@ -39,20 +25,12 @@ function LegislativeRanking({ periodLabel }: { periodLabel: string }) {
   );
 }
 
-/** 공통 카드: 기본 높이 유지, 개별 카드에서 bodyClass로 오버라이드 가능 */
-function ChartCard({
-  title,
-  children,
-  bodyClass = "h-[310px] lg:h-[300px]",
-}: {
-  title: string;
-  children?: React.ReactNode;
-  bodyClass?: string;
-}) {
+function ChartCard({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="h-full rounded-2xl bg-white/55 backdrop-blur-md border border-white/60 p-4">
       <div className="text-sm text-neutral-500 font-medium">{title}</div>
-      <div className={`mt-3 grid place-items-center text-neutral-400 w-full ${bodyClass}`}>
+      <div className="mt-3 h-[300px] grid place-items-center text-neutral-400">
+        {/* 여기 차트 렌더 */}
         {children ?? <span>Chart placeholder</span>}
       </div>
     </div>
@@ -95,8 +73,6 @@ export default function Dashboard() {
       setKpis(nextKpis);
     }
     fetchData();
-      console.log("사용자 지정 날짜로 업데이트", { startDate, endDate });
-
   }, [period, startDate, endDate]);
 
   if (!data || !trend || !kpis) {
@@ -122,15 +98,13 @@ export default function Dashboard() {
         startDate={startDate}
         endDate={endDate}
         onDateRangeChange={(s, e) => {
-          console.log("사용자 지정기간", { s, e });
           setStartDate(s);
           setEndDate(e);
         }}
       />
 
-
       <div className="flex w-full mx-auto mt-5">
-        <aside className="w-[140px] flex flex-col items-center py-6" />
+        <aside className="w-[130px] flex flex-col items-center py-6" />
         <main
           className="flex flex-col p-10 bg-white/25 backdrop-blur-md
                      shadow-[0_12px_40px_rgba(20,30,60,0.05)] flex-1"
@@ -147,9 +121,11 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-col space-y-8">
-            {/* ─────────────────────────────────────────────
-               1단: KPI (전체 폭)
-            ───────────────────────────────────────────── */}
+            {/**
+             * ─────────────────────────────────────────────────────
+             * 1단: KPI 컴포넌트 (전체 폭)
+             * ─────────────────────────────────────────────────────
+             */}
             <section className="bg-white/35 backdrop-blur-md rounded-3xl p-4 border border-white/50">
               <KpiSummary
                 kpis={kpis}
@@ -159,73 +135,63 @@ export default function Dashboard() {
               />
             </section>
 
-            {/* ─────────────────────────────────────────────
-               2단: 좌 1/3 입법수요 랭킹 · 우 2/3 네트워크 그래프
-            ───────────────────────────────────────────── */}
+            {/**
+             * ─────────────────────────────────────────────────────
+             * 2단: 좌 1/3 입법수요 랭킹 · 우 2/3 차트
+             * ─────────────────────────────────────────────────────
+             */}
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-1">
                 <LegalTop5
                   data={data}
                   startDate={startDate}
                   endDate={endDate}
-                  // domains={["privacy","child","safety","finance"]}
+                  // domains={["privacy","child","safety","finance"]} // 도메인 필터 필요시
                   onClickDetail={(law) => {
+                    // 라우팅 예시: /legal/[law]
                     const slug = encodeURIComponent(law);
                     window.location.href = `/legal/${slug}`;
                   }}
                 />
               </div>
-
+              {/* 🔽 여기 네트워크 그래프 삽입 (우측 2/3) */}
               <div className="lg:col-span-2">
-                <NetworkGraph
+                {/* <NetworkGraph
                   data={data}
                   startDate={startDate}
                   endDate={endDate}
-                  period={period}
-                  maxArticles={5}
-                />
+                  // domains={["privacy","child","safety","finance"]}
+                  height={460}
+                /> */}
               </div>
             </section>
 
-            {/* ─────────────────────────────────────────────
-               3단: 좌 1/2 막대(SocialBarChart-확장 높이) · 우 1/2 (상) 스택/파이 · (하) 히트맵
-            ───────────────────────────────────────────── */}
+            {/**
+             * ─────────────────────────────────────────────────────
+             * 3단: 좌 1/2 차트 · 우 1/2 차트
+             * ─────────────────────────────────────────────────────
+             */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 좌측: 법안별 여론 성향 (막대) - 이 카드만 넓은 높이 적용 */}
-              <ChartCard title="법안별 여론 성향 (막대)" bodyClass="min-h-[420px] lg:min-h-[680px]">
-                <div className="w-full h-full">
-                  <SocialBarChart
-                    data={data}
-                    period={period}          // 'daily_timeline' | 'weekly_timeline' | 'monthly_timeline'
-                    startDate={startDate}    // Remote에서 선택된 범위 그대로 전달
-                    endDate={endDate}
-                  />
-                </div>
+              <ChartCard title="여론 성향 분포 (파이/스택)">
+                {/* TODO: SentimentDistributionChart */}
               </ChartCard>
+              <ChartCard title="법조항 Top3 일별 추이">
+                {/* TODO: Top3ArticlesTrendChart */}
+              </ChartCard>
+            </section>
 
-              {/* 우측: 상/하 1:1 그리드 → (상) 여론 성향 분포, (하) 분야별 히트맵 (기본 높이 유지) */}
-              <div className="grid grid-rows-2 gap-6 h-full w-full">
-                <ChartCard title="여론 성향 추이 (스택)">
-                  <div className="w-full h-full">
-                    <LegislativeStanceArea
-                      data={data}
-                      startDate={startDate}
-                      endDate={endDate}
-                    />
-                  </div>
-                </ChartCard>
-
-                <ChartCard title="분야별 히트맵">
-                  <div className="w-full h-full">
-                    <Heatmap
-                      data={data}
-                      period={period}          // 'daily_timeline' | 'weekly_timeline' | 'monthly_timeline'
-                      startDate={startDate}    // Remote에서 선택된 날짜 범위(일 단위일 때 필터)
-                      endDate={endDate}
-                    />
-                  </div>
-                </ChartCard>
-              </div>
+            {/**
+             * ─────────────────────────────────────────────────────
+             * 4단: 좌 1/2 차트 · 우 1/2 차트
+             * ─────────────────────────────────────────────────────
+             */}
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartCard title="분야별 히트맵">
+                {/* TODO: FieldHeatmapChart */}
+              </ChartCard>
+              <ChartCard title="급상승 이슈 (24h)">
+                {/* TODO: RisingIncidentsChart */}
+              </ChartCard>
             </section>
           </div>
         </main>
