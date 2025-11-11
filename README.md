@@ -4,6 +4,7 @@
 > RAG 아키텍처를 도입하여 복잡한 법률 조항을 자동 매핑하는 핵심 문제를 해결했으며, 4-Class 여론 분류 모델로 정책 방향성을 구체적으로 제시합니다.  
 > 또한, 6가지 다각적 지표(IIS)를 통해 이슈의 중요도를 객관적으로 산정하고, 모든 분석 결과를 웹 대시보드로 시각화하여 데이터 기반의 신속한 입법 및 정책 결정을 지원하는 기술적 토대를 마련했습니다.
 > </span>
+</br>
 
 - 대회일정: 2025. 07.14(월) ~ 12. 03(수)
 - 대회목적: 데이터와 AI 기반의 사회·과학 문제 해결로 국내 연구데이터 생태계 저변을 확대
@@ -42,8 +43,7 @@
 - 인원: 4명
 ---
 ### Demo 
-https://github.com/pzsluna26/dashboard.git
-
+https://youtu.be/rvLSk8aTsyQ
 ---
 ### Stack
 ![Next JS](https://img.shields.io/badge/Next-black?style=for-the-badge&logo=next.js&logoColor=white) ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white) ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white) ![GitHub](https://img.shields.io/badge/github-%23121011.svg?style=for-the-badge&logo=github&logoColor=white)
